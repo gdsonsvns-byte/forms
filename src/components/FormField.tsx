@@ -1,0 +1,238 @@
+'use client'
+import { useState } from 'react'
+import Spinner from './spinner';
+
+interface FormResponse {
+    form: Form;
+}
+interface Form {
+    id: string;
+    formsId: string;
+    userId: string;
+    title: string;
+    description: string | null;
+    slug: string;
+    createdAt: string;
+    accountId: string;
+    fields: FormField[];
+}
+interface FormField {
+    id: string;
+    formId: string;
+    label: string;
+    type: string;
+    options?: string;
+    required?: boolean;
+    order?: number;
+}
+interface FormFieldProps {
+    data: FormResponse;
+    formId:string
+}
+export default function FormField({ data,formId }: FormFieldProps) {
+    const [isLoading, setIsLoading] = useState<boolean>(false)
+    const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const [formValues, setFormValues] = useState<Record<string, any>>({});
+    const handleChange = (field: FormField, value: any) => {
+        setFormValues((prev) => ({
+            ...prev,
+            [field.id]: value,
+        }));
+    };
+    const renderField = (field: FormField, options: string[]) => {
+        const baseClass =
+            "w-full border-zinc-300 rounded-lg px-3 py-2 outline-none text-sm bg-white";
+
+        switch (field.type) {
+            case "text":
+            case "email":
+            case "number":
+            case "date":
+                return (
+                    <input
+                        type={field.type}
+                        placeholder={field.label}
+                        className={`${baseClass} rounded-none border-b`}
+                        onChange={(e) => handleChange(field, e.target.value)}
+                    />
+                );
+
+            case "textarea":
+                return (
+                    <textarea
+                        placeholder={field.label}
+                        rows={3}
+                        className={`${baseClass} border`}
+                        onChange={(e) => handleChange(field, e.target.value)}
+                    />
+                );
+
+            case "file":
+                return (
+                    <input
+                        type="file"
+                        className={`${baseClass} border`}
+                        multiple
+                        onChange={(e) => handleChange(field, e.target.files)}
+                    />
+                );
+
+            case "select":
+                return (
+                    <select
+                        className={`${baseClass} border`}
+                        onChange={(e) => handleChange(field, e.target.value)}
+                    >
+                        <option value="">Select...</option>
+                        {options.map((opt) => (
+                            <option key={opt} value={opt}>
+                                {opt}
+                            </option>
+                        ))}
+                    </select>
+                );
+
+            case "radio":
+                return (
+                    <div className="flex flex-col gap-2">
+                        {options.map((opt) => (
+                            <label key={opt} className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="radio"
+                                    name={field.id}
+                                    value={opt}
+                                    onChange={() => handleChange(field, opt)}
+                                />
+                                <span>{opt}</span>
+                            </label>
+                        ))}
+                    </div>
+                );
+
+            case "checkbox":
+                return (
+                    <div className="flex flex-col gap-2">
+                        {options.map((opt) => (
+                            <label key={opt} className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    value={opt}
+                                    onChange={(e) => {
+                                        const checked = e.target.checked;
+                                        setFormValues((prev) => {
+                                            const prevValues = prev[field.id] || [];
+                                            return {
+                                                ...prev,
+                                                [field.id]: checked
+                                                    ? [...prevValues, opt]
+                                                    : prevValues.filter((v: string) => v !== opt),
+                                            };
+                                        });
+                                    }}
+                                />
+                                <span>{opt}</span>
+                            </label>
+                        ))}
+                    </div>
+                );
+
+            default:
+                return <p className="text-zinc-500 text-sm">Unsupported field type</p>;
+        }
+    };
+
+    const handleSubmit = async () => {
+        try {
+            const formData = new FormData();
+
+            Object.entries(formValues).forEach(([fieldId, val]: any) => {
+                if (val instanceof FileList) {
+                    Array.from(val).forEach((file) => formData.append(fieldId, file));
+                } else if (Array.isArray(val)) {
+                    val.forEach((v) => formData.append(fieldId, v));
+                } else {
+                    formData.append(fieldId, val);
+                }
+            });
+            setIsLoading(true);
+            console.log("asdas");
+            
+            const res = await fetch(
+                `http://localhost:3000/api/v1/form/${formId}/response`,
+                {
+                    method: "POST",
+                    body: formData,
+                }
+            );
+            
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error);
+
+            setMessage({ type: "success", text: "Form submitted successfully!" });
+            setFormValues({});
+        } catch (err: any) {
+            console.log(err);
+            
+            setMessage({ type: "error", text: err.message });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className='relative w-full flex flex-col gap-5'>
+            <div className="space-y-3 animate-fadeIn">
+                {data.form.fields.map((field: FormField, index: number) => {
+                    let options: string[] = [];
+                    if (field.options) {
+                        try {
+                            options = JSON.parse(field.options);
+                        } catch {
+                            options = [];
+                        }
+                    }
+                    return (
+                        <div
+                            key={field.id}
+                            className="p-5 rounded-lg border border-zinc-200 bg-white transition-all duration-200 group opacity-0 animate-slideUp"
+                            style={{ animationDelay: `${index * 0.08}s` }}
+                        >
+                            <div className="relative flex justify-between mb-2">
+                                <label className={`relative text-sm text-zinc-800 group-hover:text-black transition ${field.required ? "after:content-['*'] after:text-red-600 after:ml-1" : ""} `}>
+                                    {field.label}
+                                </label>
+
+                            </div>
+
+                            <div className="mt-5">
+                                {renderField(field, options)}
+                            </div>
+                        </div>
+                    );
+                })}
+
+            </div>
+            {message && (
+                <p
+                    className={`mt-3 text-center ${message.type === "success" ? "text-green-600" : "text-red-600"}`}
+                >
+                    {message.text}
+                </p>
+            )}
+            <div className="space-y-3 animate-fadeIn mt-5 flex justify-between items-center w-full">
+                <button
+                    className="w-max bg-blue-600 hover:bg-blue-700 text-white py-2 px-5 text-sm rounded-md cursor-pointer"
+                    onClick={handleSubmit}
+                    disabled={isLoading}
+                >
+                    {isLoading ? <Spinner color='white' /> : "Submit"}
+                </button>
+                <button className='text-sm text-purple-500 cursor-pointer font-medium'
+                    onClick={() => setFormValues({})}
+                >
+                    Clear form
+                </button>
+            </div>
+        </div>
+    )
+}
