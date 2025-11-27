@@ -155,10 +155,9 @@ export default function FormField({ data,formId }: FormFieldProps) {
                 }
             });
             setIsLoading(true);
-            console.log("asdas");
             
             const res = await fetch(
-                `https://leads.wizards.co.in/api/v1/form/${formId}/response`,
+                `https://leads.wizards.co.in//api/v1/form/${formId}/response`,
                 {
                     method: "POST",
                     body: formData,
