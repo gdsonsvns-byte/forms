@@ -3,7 +3,7 @@ import React from 'react'
 
 export default async function page({ params }: { params: Promise<{ form_id: string }> }) {
     const { form_id } = await params;
-    const response = await fetch(`http:/localhost:3000/api/v1/form/${form_id}`, {
+    const response = await fetch(`https://leads.wizards.co.in/api/v1/form/${form_id}`, {
         cache: "no-store",
     })
     if (!response.ok) {
