@@ -165,9 +165,11 @@ export default function FormField({ data,formId }: FormFieldProps) {
             );
             
             const json = await res.json();
-            if (!res.ok) throw new Error(json.error);
-
-            setMessage({ type: "success", text: "Form submitted successfully!" });
+            if (!res.ok) return new Error(json.error);
+            setTimeout(()=>{
+                window.location.reload()
+            },3000)
+            setMessage({ type: "success", text: "Record submitted...!" });
             setFormValues({});
         } catch (err: any) {
             console.log(err);
