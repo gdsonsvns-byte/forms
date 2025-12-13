@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { FormEvent, useRef, useState } from 'react'
 import Spinner from './spinner';
 
 interface FormResponse {
@@ -27,10 +27,11 @@ interface FormField {
 }
 interface FormFieldProps {
     data: FormResponse;
-    formId:string
+    formId: string
 }
-export default function FormField({ data,formId }: FormFieldProps) {
+export default function FormField({ data, formId }: FormFieldProps) {
     const [isLoading, setIsLoading] = useState<boolean>(false)
+    const formRef = useRef<HTMLFormElement>(null);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [formValues, setFormValues] = useState<Record<string, any>>({});
     const handleChange = (field: FormField, value: any) => {
@@ -51,19 +52,21 @@ export default function FormField({ data,formId }: FormFieldProps) {
                 return (
                     <input
                         type={field.type}
-                        placeholder={field.label}
+                        placeholder={`${field.label}${field.required && "*"}`}
                         className={`${baseClass} rounded-none border-b`}
                         onChange={(e) => handleChange(field, e.target.value)}
+                        required={field.required}
                     />
                 );
 
             case "textarea":
                 return (
                     <textarea
-                        placeholder={field.label}
+                        placeholder={`${field.label}${field.required && "*"}`}
                         rows={3}
                         className={`${baseClass} border`}
                         onChange={(e) => handleChange(field, e.target.value)}
+                        required={field.required}
                     />
                 );
 
@@ -74,6 +77,7 @@ export default function FormField({ data,formId }: FormFieldProps) {
                         className={`${baseClass} border`}
                         multiple
                         onChange={(e) => handleChange(field, e.target.files)}
+                        required={field.required}
                     />
                 );
 
@@ -82,6 +86,7 @@ export default function FormField({ data,formId }: FormFieldProps) {
                     <select
                         className={`${baseClass} border`}
                         onChange={(e) => handleChange(field, e.target.value)}
+                        required={field.required}
                     >
                         <option value="">Select...</option>
                         {options.map((opt) => (
@@ -102,6 +107,7 @@ export default function FormField({ data,formId }: FormFieldProps) {
                                     name={field.id}
                                     value={opt}
                                     onChange={() => handleChange(field, opt)}
+                                    required={field.required}
                                 />
                                 <span>{opt}</span>
                             </label>
@@ -117,6 +123,7 @@ export default function FormField({ data,formId }: FormFieldProps) {
                                 <input
                                     type="checkbox"
                                     value={opt}
+                                    required={field.required}
                                     onChange={(e) => {
                                         const checked = e.target.checked;
                                         setFormValues((prev) => {
@@ -141,7 +148,34 @@ export default function FormField({ data,formId }: FormFieldProps) {
         }
     };
 
-    const handleSubmit = async () => {
+    const handleSubmit = async (event: FormEvent) => {
+        event.preventDefault();
+
+        for (const field of data.form.fields) {
+            if (field.required) {
+                const value = formValues[field.id];
+
+                if (field.type === "file") {
+                    if (!value || value.length === 0) {
+                        setMessage({ type: "error", text: `${field.label} is required.` });
+                        return;
+                    }
+                }
+
+                if (field.type === "checkbox") {
+                    if (!value || value.length === 0) {
+                        setMessage({ type: "error", text: `${field.label} is required.` });
+                        return;
+                    }
+                }
+
+                if (!value || value === "") {
+                    setMessage({ type: "error", text: `${field.label} is required.` });
+                    return;
+                }
+            }
+        }
+
         try {
             const formData = new FormData();
 
@@ -154,8 +188,9 @@ export default function FormField({ data,formId }: FormFieldProps) {
                     formData.append(fieldId, val);
                 }
             });
+
             setIsLoading(true);
-            
+
             const res = await fetch(
                 `https://leads.wizards.co.in/api/v1/form/${formId}/response`,
                 {
@@ -163,77 +198,88 @@ export default function FormField({ data,formId }: FormFieldProps) {
                     body: formData,
                 }
             );
-            
+
             const json = await res.json();
             if (!res.ok) return new Error(json.error);
-            setTimeout(()=>{
-                window.location.reload()
-            },3000)
+
             setMessage({ type: "success", text: "Record submitted...!" });
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 1300);
+
             setFormValues({});
         } catch (err: any) {
-            console.log(err);
-            
             setMessage({ type: "error", text: err.message });
         } finally {
             setIsLoading(false);
         }
     };
+    const handleClear = () => {
+        formRef.current?.reset();
+        setFormValues({});
+        setMessage(null);
+    };
+
 
     return (
         <div className='relative w-full flex flex-col gap-5'>
-            <div className="space-y-3 animate-fadeIn">
-                {data.form.fields.map((field: FormField, index: number) => {
-                    let options: string[] = [];
-                    if (field.options) {
-                        try {
-                            options = JSON.parse(field.options);
-                        } catch {
-                            options = [];
+            <form ref={formRef} onSubmit={handleSubmit}>
+                <div className="space-y-3 animate-fadeIn">
+                    {data.form.fields.map((field: FormField, index: number) => {
+                        let options: string[] = [];
+                        if (field.options) {
+                            try {
+                                options = JSON.parse(field.options);
+                            } catch {
+                                options = [];
+                            }
                         }
-                    }
-                    return (
-                        <div
-                            key={field.id}
-                            className="p-5 rounded-lg border border-zinc-200 bg-white transition-all duration-200 group opacity-0 animate-slideUp"
-                            style={{ animationDelay: `${index * 0.08}s` }}
-                        >
-                            <div className="relative flex justify-between mb-2">
-                                <label className={`relative text-sm text-zinc-800 group-hover:text-black transition ${field.required ? "after:content-['*'] after:text-red-600 after:ml-1" : ""} `}>
-                                    {field.label}
-                                </label>
+                        return (
+                            <div
+                                key={field.id}
+                                className="p-5 rounded-lg border border-zinc-200 bg-white transition-all duration-200 group opacity-0 animate-slideUp"
+                                style={{ animationDelay: `${index * 0.08}s` }}
+                            >
+                                {
+                                    options.length > 0 &&
+                                    <div className="relative flex justify-between mb-2">
+                                        <label className={`relative text-sm text-zinc-800 group-hover:text-black transition ${field.required ? "after:content-['*'] after:text-red-600 after:ml-1" : ""} `}>
+                                            {field.label}
+                                        </label>
+                                    </div>
+                                }
 
+
+                                <div className="mt-0">
+                                    {renderField(field, options)}
+                                </div>
                             </div>
+                        );
+                    })}
 
-                            <div className="mt-5">
-                                {renderField(field, options)}
-                            </div>
-                        </div>
-                    );
-                })}
-
-            </div>
-            {message && (
-                <p
-                    className={`mt-3 text-center ${message.type === "success" ? "text-green-600" : "text-red-600"}`}
-                >
-                    {message.text}
-                </p>
-            )}
-            <div className="space-y-3 animate-fadeIn mt-5 flex justify-between items-center w-full">
-                <button
-                    className="w-max bg-blue-600 hover:bg-blue-700 text-white py-2 px-5 text-sm rounded-md cursor-pointer"
-                    onClick={handleSubmit}
-                    disabled={isLoading}
-                >
-                    {isLoading ? <Spinner color='white' /> : "Submit"}
-                </button>
-                <button className='text-sm text-purple-500 cursor-pointer font-medium'
-                    onClick={() => setFormValues({})}
-                >
-                    Clear form
-                </button>
-            </div>
+                </div>
+                {message && (
+                    <p
+                        className={`mt-3 text-center ${message.type === "success" ? "text-green-600" : "text-red-600"}`}
+                    >
+                        {message.text}
+                    </p>
+                )}
+                <div className="space-y-3 animate-fadeIn mt-5 flex justify-between items-center w-full">
+                    <button
+                        className="w-max bg-blue-600 hover:bg-blue-700 text-white py-2 px-5 text-sm rounded-md cursor-pointer"
+                        disabled={isLoading}
+                    >
+                        {isLoading ? <Spinner color='white' /> : "Submit"}
+                    </button>
+                    <button className='text-sm text-purple-500 cursor-pointer font-medium'
+                        onClick={handleClear}
+                    >
+                        Clear form
+                    </button>
+                </div>
+            </form>
         </div>
     )
 }
