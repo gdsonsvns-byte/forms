@@ -52,7 +52,7 @@ export default function FormField({ data, formId }: FormFieldProps) {
                 return (
                     <input
                         type={field.type}
-                        placeholder={`${field.label}${field.required && "*"}`}
+                        placeholder={`${field.label}${field.required ? "*" : ''}`}
                         className={`${baseClass} rounded-none border-b`}
                         onChange={(e) => handleChange(field, e.target.value)}
                         required={field.required}
@@ -62,7 +62,7 @@ export default function FormField({ data, formId }: FormFieldProps) {
             case "textarea":
                 return (
                     <textarea
-                        placeholder={`${field.label}${field.required && "*"}`}
+                        placeholder={`${field.label}${field.required ? "*" : ''}`}
                         rows={3}
                         className={`${baseClass} border`}
                         onChange={(e) => handleChange(field, e.target.value)}
