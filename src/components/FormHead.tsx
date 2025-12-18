@@ -18,7 +18,7 @@ export default function FormHead({ title, desc }: Props) {
             <div className="border-t border-gray-300 mt-2" />
             <div className='p-5 '>
                 <span className='text-sm text-rose-500'>
-                    * Indicates required question
+                    * Indicates required
                 </span>
             </div>
         </div>
