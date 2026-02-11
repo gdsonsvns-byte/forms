@@ -34,7 +34,7 @@ export default function FormField({ data, formId }: FormFieldProps) {
     const formRef = useRef<HTMLFormElement>(null);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [formValues, setFormValues] = useState<Record<string, any>>({});
-    const [fileLabel, setFileLabel] = useState<string>("");
+    const [fileLabels, setFileLabels] = useState<Record<string, string>>({});
 
     const handleChange = (field: FormField, value: any) => {
         setFormValues((prev) => ({
@@ -83,15 +83,15 @@ export default function FormField({ data, formId }: FormFieldProps) {
                             required={field.required}
                             onChange={(e) => {
                                 const files = e.target.files;
-                                if (files && files.length > 0) {
-                                    setFileLabel(
-                                        files.length === 1
-                                            ? files[0].name
-                                            : `${files.length} files selected`
-                                    );
-                                } else {
-                                    setFileLabel("");
-                                }
+                                setFileLabels((prev) => ({
+                                    ...prev,
+                                    [field.id]:
+                                        files && files.length > 0
+                                            ? files.length === 1
+                                                ? files[0].name
+                                                : `${files.length} files selected`
+                                            : "",
+                                }));
                                 handleChange(field, files);
                             }}
                         />
@@ -101,7 +101,7 @@ export default function FormField({ data, formId }: FormFieldProps) {
                             className="flex items-center justify-between w-full px-4 py-3 border border-gray-300 rounded-lg cursor-pointer font-mono text-sm text-gray-700 hover:border-primary transition"
                         >
                             <span className="truncate">
-                                {fileLabel || "Choose file"}
+                                {fileLabels[field.id] || "Choose file"}
                             </span>
 
                             <span className="text-xs text-gray-800">
