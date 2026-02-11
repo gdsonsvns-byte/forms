@@ -12,7 +12,7 @@ export default async function page({ params }: { params: Promise<{ form_id: stri
     const data = await response.json()
 
     return (
-        <section className='relative w-full bg-gray-100 min-h-screen h-full p-5'>
+        <section className='relative w-full bg-gray-100 min-h-screen h-full p-2'>
             <Form res={data} formId={form_id} />
         </section>
     )
