@@ -14,6 +14,10 @@ interface Form {
     createdAt: string;
     accountId: string;
     fields: FormField[];
+    account: {
+        id: string,
+        businessName: string
+    }
 }
 interface FormField {
     id: string;
@@ -26,14 +30,18 @@ interface FormField {
 }
 interface Props {
     res: FormResponse
-    formId:string
+    formId: string
 }
 
 
-export default function Form({ res,formId }: Props) {
+export default function Form({ res, formId }: Props) {
     return (
         <div className='relative max-w-2xl mx-auto p-5 flex flex-col gap-5'>
-            <FormHead title={res.form.title} desc={res.form.description ?? ''} />
+            <FormHead
+                title={res.form.title}
+                desc={res.form.description ?? ''}
+                accountName={res.form.account.businessName}
+            />
             <FormField data={res} formId={formId} />
         </div>
     )
