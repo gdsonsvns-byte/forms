@@ -1,12 +1,11 @@
 import Form from '@/src/components/Form'
 import { Metadata } from 'next';
 import React from 'react'
-
+// http://localhost:3000
 export default async function page({ params }: { params: Promise<{ form_id: string }> }) {
     const { form_id } = await params;
-    const response = await fetch(`https://leads.wizards.co.in/api/v1/form/${form_id}`, {
-        cache: "no-store",
-    })
+    const response = await fetch(`https://leads.wizards.co.in/api/v1/form/${form_id}`)
+
     if (!response.ok) {
         return <p className="text-red-600 text-center mt-10">Form not found</p>;
     }
@@ -32,6 +31,10 @@ interface Form {
     createdAt: string;
     accountId: string;
     fields: FormField[];
+    account: {
+        id: string,
+        businessName: string
+    }
 }
 interface FormField {
     id: string;
@@ -46,9 +49,7 @@ interface FormField {
 export async function generateMetadata({ params }: { params: Promise<{ form_id: string }> }): Promise<Metadata> {
     const { form_id } = await params;
     try {
-        const response = await fetch(`https://leads.wizards.co.in/api/v1/form/${form_id}`, {
-            cache: "no-store",
-        })
+        const response = await fetch(`https://leads.wizards.co.in/api/v1/form/${form_id}`)
 
         const data: FormResponse = await response.json();
         const title = data.form.title ?? ''

@@ -3,24 +3,23 @@ import React from 'react'
 interface Props {
     title: string;
     desc: string
+    accountName: string;
 }
-export default function FormHead({ title, desc }: Props) {
+export default function FormHead({ title, desc, accountName }: Props) {
     return (
         <div className='relative w-full bg-white rounded-lg border border-gray-200 after:absolute after:inset-x-0 after:h-2 after:bg-blue-600 after:top-0 overflow-hidden'>
             <div className='p-5 mt-2'>
-                <h1 className='font-semibold text-3xl text-zinc-700'>
-                    {title}
+                <h1 className='font-semibold text-4xl text-zinc-700 mb-2'>
+                    {accountName}
                 </h1>
-                <p className='mt-2 text-sm text-gray-600'>
+                <h2 className='font-semibold text-xl text-zinc-500 leading-tight'>
+                    {title}
+                </h2>
+                <p className='mt-2 text-sm text-gray-600 leading-tight'>
                     {desc}
                 </p>
             </div>
             <div className="border-t border-gray-300 mt-2" />
-            <div className='p-5 '>
-                <span className='text-sm text-rose-500'>
-                    * Indicates required
-                </span>
-            </div>
         </div>
     )
 }

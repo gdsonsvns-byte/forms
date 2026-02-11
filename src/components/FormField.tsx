@@ -34,6 +34,8 @@ export default function FormField({ data, formId }: FormFieldProps) {
     const formRef = useRef<HTMLFormElement>(null);
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [formValues, setFormValues] = useState<Record<string, any>>({});
+    const [fileLabel, setFileLabel] = useState<string>("");
+
     const handleChange = (field: FormField, value: any) => {
         setFormValues((prev) => ({
             ...prev,
@@ -72,13 +74,41 @@ export default function FormField({ data, formId }: FormFieldProps) {
 
             case "file":
                 return (
-                    <input
-                        type="file"
-                        className={`${baseClass} border`}
-                        multiple
-                        onChange={(e) => handleChange(field, e.target.files)}
-                        required={field.required}
-                    />
+                    <div className="relative">
+                        <input
+                            id={field.id}
+                            type="file"
+                            className={`${baseClass} hidden`}
+                            multiple
+                            required={field.required}
+                            onChange={(e) => {
+                                const files = e.target.files;
+                                if (files && files.length > 0) {
+                                    setFileLabel(
+                                        files.length === 1
+                                            ? files[0].name
+                                            : `${files.length} files selected`
+                                    );
+                                } else {
+                                    setFileLabel("");
+                                }
+                                handleChange(field, files);
+                            }}
+                        />
+
+                        <label
+                            htmlFor={field.id}
+                            className="flex items-center justify-between w-full px-4 py-3 border border-gray-300 rounded-lg cursor-pointer font-mono text-sm text-gray-700 hover:border-primary transition"
+                        >
+                            <span className="truncate">
+                                {fileLabel || "Choose file"}
+                            </span>
+
+                            <span className="text-xs text-gray-800">
+                                Browse
+                            </span>
+                        </label>
+                    </div>
                 );
 
             case "select":
@@ -242,7 +272,7 @@ export default function FormField({ data, formId }: FormFieldProps) {
                                 style={{ animationDelay: `${index * 0.08}s` }}
                             >
                                 {
-                                    options.length > 0 &&
+                                    (options.length > 0 || field.type === "date" || field.type === "file") &&
                                     <div className="relative flex justify-between mb-2">
                                         <label className={`relative text-sm text-zinc-800 group-hover:text-black transition ${field.required ? "after:content-['*'] after:text-red-600 after:ml-1" : ""} `}>
                                             {field.label}
