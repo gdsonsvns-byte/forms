@@ -31,7 +31,7 @@ export default function FormField({ data, formId }: FormFieldProps) {
 
     const submitMutation = useMutation({
         mutationFn: async (payload: Record<string, any>) => {
-            const res = await axios.post(`http://localhost:3000/api/v1/form/${formId}/response`,
+            const res = await axios.post(`https://leads.wizards.co.in/api/v1/form/${formId}/response`,
                 payload,
                 {
                     headers: {
