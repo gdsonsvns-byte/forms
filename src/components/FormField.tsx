@@ -3,6 +3,7 @@ import { FormEvent, useRef, useState } from 'react'
 import Spinner from './spinner';
 import { useMutation } from '@tanstack/react-query';
 import axios, { AxiosError } from 'axios';
+import { uploadToCloudinary } from '../lib/cloudinaryUpload';
 
 interface FormField {
     id: string;
@@ -25,11 +26,18 @@ export default function FormField({ data, formId }: FormFieldProps) {
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [formValues, setFormValues] = useState<Record<string, any>>({});
     const [fileLabels, setFileLabels] = useState<Record<string, string>>({});
+    const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
     const submitMutation = useMutation({
-        mutationFn: async (formData: FormData) => {
-            const res = await axios.post(`https://leads.wizards.co.in/api/v1/form/${formId}/response`,
-                formData
+        mutationFn: async (payload: Record<string, any>) => {
+            const res = await axios.post(`http://localhost:3000/api/v1/form/${formId}/response`,
+                payload,
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                }
             )
             return res.data
         },
@@ -40,9 +48,9 @@ export default function FormField({ data, formId }: FormFieldProps) {
             setFileLabels({})
             formRef.current?.reset()
             setFormKey(prev => prev + 1)
-            setTimeout(() => {
-                window.location.reload()
-            }, 2000)
+            // setTimeout(() => {
+            //     window.location.reload()
+            // }, 2000)
         },
 
         onError: (error: AxiosError<any>) => {
@@ -77,23 +85,57 @@ export default function FormField({ data, formId }: FormFieldProps) {
         return true
     }
 
-    const handleSubmit = (e: FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault()
         setMessage(null)
 
         if (!validateForm()) return
 
-        const formData = new FormData()
-        Object.entries(formValues).forEach(([fieldId, val]: any) => {
-            if (val instanceof FileList) {
-                Array.from(val).forEach(file => formData.append(fieldId, file))
-            } else if (Array.isArray(val)) {
-                val.forEach(v => formData.append(fieldId, v))
-            } else {
-                formData.append(fieldId, val)
+        try {
+            setUploading(true);
+            setUploadProgress({});
+            const payload: Record<string, any> = {};
+
+            for (const field of data) {
+                const value = formValues[field.id];
+
+                if (field.type === "file" && value instanceof FileList) {
+                    if (value.length === 0) {
+                        payload[field.id] = [];
+                        continue;
+                    }
+
+                    const uploads = Array.from(value).map((file) =>
+                        uploadToCloudinary(
+                            file,
+                            `forms/${formId}`,
+                            (percent) => {
+                                setUploadProgress((prev) => ({
+                                    ...prev,
+                                    [field.id]: percent,
+                                }));
+                            }
+                        )
+                    );
+
+                    const results = await Promise.all(uploads);
+                    payload[field.id] = results.map((r) => r.secure_url);
+                }
+                else if (value !== undefined) {
+                    payload[field.id] = value;
+                }
             }
-        })
-        submitMutation.mutate(formData)
+            await submitMutation.mutateAsync(payload);
+        } catch (err: any) {
+            setMessage({
+                type: "error",
+                text: err?.message || "Upload failed",
+            });
+        }
+        finally {
+            setUploading(false);
+            setUploadProgress({});
+        }
     }
 
     const handleChange = (field: FormField, value: any) => {
@@ -159,15 +201,19 @@ export default function FormField({ data, formId }: FormFieldProps) {
 
                         <label
                             htmlFor={field.id}
-                            className="flex items-center justify-between w-full px-4 py-3 border border-gray-300 rounded-lg cursor-pointer font-mono text-sm text-gray-700 hover:border-primary transition"
+                            className="flex items-center justify-between w-full px-4 py-3 border border-gray-300 rounded-lg cursor-pointer font-mono text-sm text-gray-700"
                         >
                             <span className="truncate">
-                                {fileLabels[field.id] || "Choose file"}
+                                {uploading && uploadProgress[field.id] !== undefined
+                                    ? `Uploading ${uploadProgress[field.id]}%`
+                                    : fileLabels[field.id] || "Choose file"}
                             </span>
 
-                            <span className="text-xs text-gray-800">
-                                Browse
-                            </span>
+                            {uploading && uploadProgress[field.id] !== undefined ? (
+                                <Spinner />
+                            ) : (
+                                <span className="text-xs text-gray-800">Browse</span>
+                            )}
                         </label>
                     </div>
                 );
@@ -294,9 +340,9 @@ export default function FormField({ data, formId }: FormFieldProps) {
                 <div className="space-y-3 animate-fadeIn mt-5 flex justify-between items-center w-full">
                     <button
                         className="w-max bg-blue-600 hover:bg-blue-700 text-white py-2 px-5 text-sm rounded-md cursor-pointer"
-                        disabled={submitMutation.isPending}
+                        disabled={submitMutation.isPending || uploading}
                     >
-                        {submitMutation.isPending ? <Spinner color='white' /> : "Submit"}
+                        {(submitMutation.isPending || uploading) ? <Spinner color='white' /> : "Submit"}
                     </button>
                     <button className='text-sm text-purple-500 cursor-pointer font-medium'
                         onClick={handleClear}
