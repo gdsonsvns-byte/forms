@@ -11,7 +11,7 @@ export default function Form({ formId }: Props) {
     const { data, isLoading, isFetching, error, isError } = useQuery<Form>({
         queryKey: ["view-form", formId],
         queryFn: async () => {
-            const res = await axios.get<FormResponse>(`https://leads.wizards.co.in/api/v1/form/${formId}`, {
+            const res = await axios.get<FormResponse>(`http://localhost:3000/api/v1/form/${formId}`, {
                 withCredentials: true,
             });
             return res.data.form;
