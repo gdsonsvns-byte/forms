@@ -39,24 +39,24 @@ interface FormField {
     order?: number;
 }
 
-// export async function generateMetadata({ params }: { params: Promise<{ form_id: string }> }): Promise<Metadata> {
-//     const { form_id } = await params;
-//     try {
-//         const response = await fetch(`https://leads.wizards.co.in/api/v1/form/${form_id}`)
+export async function generateMetadata({ params }: { params: Promise<{ form_id: string }> }): Promise<Metadata> {
+    const { form_id } = await params;
+    try {
+        const response = await fetch(`https://leads.wizards.co.in/api/v1/form/${form_id}`)
 
-//         const data: FormResponse = await response.json();
-//         const title = data.form.title ?? ''
-//         const description = data.form.description ?? ''
+        const data: FormResponse = await response.json();
+        const title = data.form.title ?? ''
+        const description = data.form.description ?? ''
 
-//         return {
-//             title,
-//             description,
-//         };
-//     } catch (error) {
-//         console.error('❌ Error generating metadata:', error);
-//         return {
-//             title: 'Wizards Next Leads Form',
-//             description: 'Wizards Next Leads Form',
-//         };
-//     }
-// }
+        return {
+            title,
+            description,
+        };
+    } catch (error) {
+        console.error('❌ Error generating metadata:', error);
+        return {
+            title: 'Wizards Next Leads Form',
+            description: 'Wizards Next Leads Form',
+        };
+    }
+}
