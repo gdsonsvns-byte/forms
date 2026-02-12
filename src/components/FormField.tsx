@@ -1,21 +1,9 @@
 'use client'
 import { FormEvent, useRef, useState } from 'react'
 import Spinner from './spinner';
+import { useMutation } from '@tanstack/react-query';
+import axios, { AxiosError } from 'axios';
 
-interface FormResponse {
-    form: Form;
-}
-interface Form {
-    id: string;
-    formsId: string;
-    userId: string;
-    title: string;
-    description: string | null;
-    slug: string;
-    createdAt: string;
-    accountId: string;
-    fields: FormField[];
-}
 interface FormField {
     id: string;
     formId: string;
@@ -26,15 +14,87 @@ interface FormField {
     order?: number;
 }
 interface FormFieldProps {
-    data: FormResponse;
+    data: FormField[];
     formId: string
 }
+
 export default function FormField({ data, formId }: FormFieldProps) {
-    const [isLoading, setIsLoading] = useState<boolean>(false)
     const formRef = useRef<HTMLFormElement>(null);
+    const [formKey, setFormKey] = useState(0);
+
     const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
     const [formValues, setFormValues] = useState<Record<string, any>>({});
     const [fileLabels, setFileLabels] = useState<Record<string, string>>({});
+
+    const submitMutation = useMutation({
+        mutationFn: async (formData: FormData) => {
+            const res = await axios.post(`https://leads.wizards.co.in/api/v1/form/${formId}/response`,
+                formData
+            )
+            return res.data
+        },
+
+        onSuccess: () => {
+            setMessage({ type: 'success', text: 'Record submitted...!' })
+            setFormValues({})
+            setFileLabels({})
+            formRef.current?.reset()
+            setFormKey(prev => prev + 1)
+            setTimeout(() => {
+                window.location.reload()
+            }, 2000)
+        },
+
+        onError: (error: AxiosError<any>) => {
+            setMessage({
+                type: 'error',
+                text: error?.response?.data?.error || 'Something went wrong',
+            })
+        },
+    })
+
+    const validateForm = () => {
+        for (const field of data) {
+            if (!field.required) continue
+
+            const value = formValues[field.id]
+
+            if (field.type === 'file' && (!value || value.length === 0)) {
+                setMessage({ type: 'error', text: `${field.label} is required.` })
+                return false
+            }
+
+            if (field.type === 'checkbox' && (!value || value.length === 0)) {
+                setMessage({ type: 'error', text: `${field.label} is required.` })
+                return false
+            }
+
+            if (!value || value === '') {
+                setMessage({ type: 'error', text: `${field.label} is required.` })
+                return false
+            }
+        }
+        return true
+    }
+
+    const handleSubmit = (e: FormEvent) => {
+        e.preventDefault()
+        setMessage(null)
+
+        if (!validateForm()) return
+
+        const formData = new FormData()
+        Object.entries(formValues).forEach(([fieldId, val]: any) => {
+            if (val instanceof FileList) {
+                Array.from(val).forEach(file => formData.append(fieldId, file))
+            } else if (Array.isArray(val)) {
+                val.forEach(v => formData.append(fieldId, v))
+            } else {
+                formData.append(fieldId, val)
+            }
+        })
+        submitMutation.mutate(formData)
+    }
 
     const handleChange = (field: FormField, value: any) => {
         setFormValues((prev) => ({
@@ -42,6 +102,7 @@ export default function FormField({ data, formId }: FormFieldProps) {
             [field.id]: value,
         }));
     };
+
     const renderField = (field: FormField, options: string[]) => {
         const baseClass =
             "w-full border-zinc-300 rounded-lg px-3 py-2 outline-none text-sm bg-white";
@@ -178,85 +239,19 @@ export default function FormField({ data, formId }: FormFieldProps) {
         }
     };
 
-    const handleSubmit = async (event: FormEvent) => {
-        event.preventDefault();
-
-        for (const field of data.form.fields) {
-            if (field.required) {
-                const value = formValues[field.id];
-
-                if (field.type === "file") {
-                    if (!value || value.length === 0) {
-                        setMessage({ type: "error", text: `${field.label} is required.` });
-                        return;
-                    }
-                }
-
-                if (field.type === "checkbox") {
-                    if (!value || value.length === 0) {
-                        setMessage({ type: "error", text: `${field.label} is required.` });
-                        return;
-                    }
-                }
-
-                if (!value || value === "") {
-                    setMessage({ type: "error", text: `${field.label} is required.` });
-                    return;
-                }
-            }
-        }
-
-        try {
-            const formData = new FormData();
-
-            Object.entries(formValues).forEach(([fieldId, val]: any) => {
-                if (val instanceof FileList) {
-                    Array.from(val).forEach((file) => formData.append(fieldId, file));
-                } else if (Array.isArray(val)) {
-                    val.forEach((v) => formData.append(fieldId, v));
-                } else {
-                    formData.append(fieldId, val);
-                }
-            });
-
-            setIsLoading(true);
-
-            const res = await fetch(
-                `https://leads.wizards.co.in/api/v1/form/${formId}/response`,
-                {
-                    method: "POST",
-                    body: formData,
-                }
-            );
-
-            const json = await res.json();
-            if (!res.ok) return new Error(json.error);
-
-            setMessage({ type: "success", text: "Record submitted...!" });
-
-            setTimeout(() => {
-                window.location.reload();
-            }, 1300);
-
-            setFormValues({});
-        } catch (err: any) {
-            setMessage({ type: "error", text: err.message });
-        } finally {
-            setIsLoading(false);
-        }
-    };
     const handleClear = () => {
         formRef.current?.reset();
         setFormValues({});
         setMessage(null);
+        setFileLabels({})
+        setFormKey(prev => prev + 1)
     };
-
 
     return (
         <div className='relative w-full flex flex-col gap-5'>
-            <form ref={formRef} onSubmit={handleSubmit}>
+            <form ref={formRef} onSubmit={handleSubmit} key={formKey}>
                 <div className="space-y-3 animate-fadeIn">
-                    {data.form.fields.map((field: FormField, index: number) => {
+                    {data.map((field: FormField, index: number) => {
                         let options: string[] = [];
                         if (field.options) {
                             try {
@@ -299,9 +294,9 @@ export default function FormField({ data, formId }: FormFieldProps) {
                 <div className="space-y-3 animate-fadeIn mt-5 flex justify-between items-center w-full">
                     <button
                         className="w-max bg-blue-600 hover:bg-blue-700 text-white py-2 px-5 text-sm rounded-md cursor-pointer"
-                        disabled={isLoading}
+                        disabled={submitMutation.isPending}
                     >
-                        {isLoading ? <Spinner color='white' /> : "Submit"}
+                        {submitMutation.isPending ? <Spinner color='white' /> : "Submit"}
                     </button>
                     <button className='text-sm text-purple-500 cursor-pointer font-medium'
                         onClick={handleClear}
