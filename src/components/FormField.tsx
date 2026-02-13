@@ -55,10 +55,12 @@ export default function FormField({ data, formId }: FormFieldProps) {
 
         onError: (error: AxiosError<any>) => {
             setMessage({
-                type: 'error',
-                text: error?.response?.data?.error || 'Something went wrong',
-            })
-        },
+                type: "error",
+                text:
+                    error?.response?.data?.error ??
+                    "Some thing went wrong...!",
+            });
+        }
     })
 
     const validateForm = () => {
