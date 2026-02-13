@@ -9,10 +9,6 @@ export async function uploadToCloudinary(
     const signRes = await axios.post("/api/v1/cloudinary/sign", { folder });
     const { signature, timestamp, cloudName, apiKey } = signRes.data;
 
-    let resourceType: "image" | "video" | "raw" = "raw";
-    if (isImage(file)) resourceType = "image";
-    else if (isVideo(file)) resourceType = "video";
-
     const formData = new FormData();
     formData.append("file", file);
     formData.append("api_key", apiKey);
