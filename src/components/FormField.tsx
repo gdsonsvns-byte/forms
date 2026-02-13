@@ -211,9 +211,9 @@ export default function FormField({ data, formId }: FormFieldProps) {
                                     : fileLabels[field.id] || "Choose file"}
                             </span>
 
-                            {uploading && uploadProgress[field.id] !== undefined ? (
+                            {uploading && uploadProgress[field.id] !== 100 ? (
                                 <Spinner />
-                            ) : (
+                            ) : uploadProgress[field.id] === 100 ? <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide lucide-check-icon lucide-check text-green-500"><path d="M20 6 9 17l-5-5" /></svg> : (
                                 <span className="text-xs text-gray-800">Browse</span>
                             )}
                         </label>
